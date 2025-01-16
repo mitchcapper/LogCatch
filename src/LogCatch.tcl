@@ -7,6 +7,7 @@ set procRegex ""
 set autoOpenDevice ""
 set autoClearLogOn ""
 set showConsole 0
+set ForcedLogType ""
 
 for { set i 0 } { $i < [llength $argv] } { incr i } {
     set opt [lindex $argv $i]
@@ -31,6 +32,9 @@ foreach {opt val} $argv {
     }
     if {"$opt" == "--clearOn"} {
         set autoClearLogOn $val
+    }
+    if {"$opt" == "--logType"} {
+        set ForcedLogType $val
     }
 }
 if { $showConsole } {
@@ -453,7 +457,7 @@ proc updateLoadedFiles {} {
     global LoadedFiles OS
     set idx [expr {$OS =="Darwin" ? "2" : "3"}]
     .mbar.i.f delete $idx end
-    .mbar.i.f add command -label "Garbage History" -command "garbageHistory"
+    .mbar.i.f add command -label "Clear Recent" -command "garbageHistory"
     .mbar.i.f add separator
     foreach afile $LoadedFiles {
         .mbar.i.f add radiobutton -label $afile -variable Device -value "file:$afile" -command "loadFile $afile"
@@ -565,6 +569,19 @@ proc changeWrapMode {args} {
     update idletasks
     puts "changeWrapMode $WrapMode"
 }
+proc changeForcedLogType {args} {
+    global ForcedLogType LogType LoadFile
+
+    set LogType $ForcedLogType
+    if {$LogType == "" && $LoadFile != ""} {
+        checkLogType $LoadFile
+    }
+    updateLogLevelView
+    reloadProc
+    .b.logtype config -text "LogType: $LogType"
+    puts "changeForcedLogType for val: $ForcedLogType"
+}
+
 
 proc encodingMenu {{state "normal"}} {
     global Encoding Codes runDir
@@ -876,6 +893,7 @@ proc loadLastState {} {
         }
         updateLoadedFiles
         changeWrapMode
+        changeForcedLogType
         changeEncoding
         changeMenuFace
         changeFontSize LogViewFontName LogViewFontSize

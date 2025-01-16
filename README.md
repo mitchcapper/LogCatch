@@ -55,7 +55,7 @@ Android Specific Features:
 ![ScreenShot](https://raw.github.com/pikey8706/LogCatch/master/screenshot_on_mac.png)
 
 ## Requirements
-You need the binaries: wish (tk), gawk, and optionally adb (for android live logging)
+You need the binaries: wish (tk), gawk (in path as awk), and optionally adb (for android live logging),  also the command line tool tail for incremental loading.
 
 ### Linux:
 gawk for filtering, tk package for GUI, and android-sdk for adb.
@@ -117,7 +117,7 @@ or
 - Please create shortcut lancher by yourself.
 
 ### Viewing log file or live Device Log
-To view log files click "Files" and browse to the log file you would like.
+To view log files click "Files" and browse to the log file you would like.  If you right click on the files button you can choose between "one time" and "incremental" loading.  Incremental loading runs tail itself on the file and if truncated the new file output will be put out still.  Clicking on the bullet next to the file will cause the file to reload as well.
 
 To see log from connected devices after app launched:
 - you should select android-sdk-directory or adb including directory from popup window.
@@ -126,7 +126,7 @@ To see log from connected devices after app launched:
 - click Device name then log will be shown in window.
 
 ### Searching / Highlights
-The primary interface shows 9 colored squares directly above the log file itself.  You can put a search term into any of these boxes and hit enter, and every instance of that term will be highlighted (the total matches are shown on the right side of the box).  You can search/seek the term by hitting then up and down arrow keys while within the respective highlight box.
+The primary interface shows 9 colored squares directly above the log file itself.  You can put a search term into any of these boxes and hit enter, and every instance of that term will be highlighted (the total matches are shown on the right side of the box).  You can search/seek the term by hitting then up and down arrow keys while within the respective highlight box.  Please note highlights/searches are case sensitive.
 
 ### Tailing / Suspending Reads
 You can automatically scroll to the bottom of the log by having the "TrackTail" checked at the bottom right of the screen.
@@ -148,8 +148,11 @@ You can filter by a specific process and (or) by a specific android tag (tags ar
 The existing session has all search/filters saved automatically to `~/.logcatch` these are reloaded on startup as well.
 
 ### Command Line Args
+These are case sensitive
+
 - --dir [dir] - Overrides the directory for LogCatch and its other scripts
 - --clearOn [str] - If string is found in the log file everything before that string is cleared out.  Useful to essentially "start" logging when a specific event/action happens.
+- --logType [LogType] - force the log type to this type (rather than detecting it)
 - --console - Shows the debug console window by default
 
 For android adb connections only:
@@ -157,7 +160,7 @@ For android adb connections only:
 - --device [deviceRegex] - Takes a regex and if an android device with that name is found it is automatically attached to it
 
 ## Log Types
-- LogCatch determines the type of log from the first 6 lines of the log file.  The log type is currently only used for extracting the LogLevel for the line all other functionality works no matter the file type.
+- LogCatch determines the type of log from the first lineMax(100 by default) lines of the log file.  The log type is currently only used for extracting the LogLevel for the line all other functionality works no matter the file type.  The loglevel also allows for initial colorization of the line.  When logcat is used it specifically is set by us to output in threadtime format and we siwtch to using that.  You can right click on the log type (bottom right) to force a specific type.  The highlight type highlights based on keywords in the line (fatal,error,warning, etc).
 
 ## Author
 Hirohito Sasaki

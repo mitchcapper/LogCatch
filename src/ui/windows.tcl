@@ -335,6 +335,21 @@ proc wrapMenu {} {
     $m add radiobutton -label Word -value word -variable WrapMode -command changeWrapMode
     bind .b.wmode <1> "tk_popup $m %X %Y"
 }
+proc logTypeMenu {} {
+    global ForcedLogType LogTypes
+    
 
+    set m .logtype
+    menu $m -tearoff 0
+
+    $m add radiobutton -label Detect -value "" -variable ForcedLogType -command changeForcedLogType
+    foreach type $LogTypes {
+        set niceName [string toupper [string index $type 0]][string range $type 1 end]
+        $m add radiobutton -label $niceName -value $type -variable ForcedLogType -command changeForcedLogType
+    }
+
+    bind .b.logtype <1> "tk_popup $m %X %Y"
+
+}
 wrapMenu
-
+logTypeMenu

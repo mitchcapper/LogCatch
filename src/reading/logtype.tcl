@@ -1,13 +1,18 @@
-set LogTypes "none brief process tag time thread threadtime long time_eclipse studio"
+set LogTypes "none brief process tag time thread threadtime long time_eclipse studio keyword"
 set LogType "none"
 set LogLevels "V D I W E A F"
 set LogLevelsLong "Verbose Debug Info Warning Error Assert Fatal"
 set LogLevel(selected) "Verbose"
 
-# check first 6 line
+
+# check first lineMax lines
 proc checkLogType {filename} {
-    global LogType LogLevels
+    global LogType LogLevels ForcedLogType
     set LogType "none"
+    if {"$ForcedLogType" != ""} {
+        set LogType $ForcedLogType
+        return
+    }
     puts "checking logtype ... \"$filename\""
     set rp [open "$filename" r]
     if {"$rp" != ""} {
@@ -139,6 +144,8 @@ proc reloadProc {} {
         source $readingDir/readLog_threadtime.tcl
     } elseif {"$LogType" == "brief"} {
         source $readingDir/readLog_brief.tcl
+    } elseif {"$LogType" == "keyword"} {
+        source $readingDir/readLog_keyword.tcl
     }
     puts "reload proc readLog for logtype: $LogType"
 }
