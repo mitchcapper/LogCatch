@@ -25,9 +25,9 @@ Android Specific Features:
 
 - [Screenshot](#screenshot)
 - [Requirements](#requirements)
-	- [Linux:](#linux)
-	- [Mac:](#mac)
-	- [Windows:](#windows)
+	- [Linux](#linux)
+	- [Mac](#mac)
+	- [Windows](#windows)
 - [Install](#install)
 	- [Linux:](#linux-1)
 	- [Mac:](#mac-1)
@@ -57,19 +57,17 @@ Android Specific Features:
 ## Requirements
 You need the binaries: wish (tk), gawk (in path as awk), and optionally adb (for android live logging),  also the command line tool tail for incremental loading.
 
-### Linux:
+### Linux
 gawk for filtering, tk package for GUI, and android-sdk for adb.
 
-### Mac:
+### Mac
 android-sdk for adb, gawk, and tk(from Homebrew).
 From macOS Monterery, tk vesion 8.6.12(or over) from Homebrew can run this app.
 
-### Windows:
-bash, wish, gawk, android-sdk for adb.
+### Windows
+wish & gawk (in path as awk.exe) and for direct android connections the android-sdk for adb.
 
-Recommended to install msys-git ([Git for Windows](https://git-for-windows.github.io/)). This contains git, bash, awk, wish.
-
-No warranty for subsystem-linux on windows 10. Only msys-git is tested but other setups may work.
+Easiest way to get all these is install [Git for Windows](https://git-for-windows.github.io/) or msys-git. This contains git, bash, awk, wish all in one.  
 
 ## Install
 ### Linux:
@@ -85,11 +83,7 @@ Debian/Ubuntu:
 `brew install gawk tcl-tk`
 
 ### Windows:
-I tested my-app on msysgit enviroment.
-
-Install from : [here](https://git-for-windows.github.io/)
-
-Or active tcl may work().
+Active TCL or any wish install should work but you need awk.exe as well.
 
 ## Usage
 ### Starting
@@ -107,14 +101,17 @@ $ wish src/LogCatch.tcl --dir src
 </pre>
 
 ### Windows user
-Assuming you have done installed msys-git.
+Assuming you have done installed git.
 - git clone https://github.com/pikey8706/LogCatch.git
 or
 - Download zip file: https://github.com/pikey8706/LogCatch/archive/master.zip
 - unzip LogCatch-master.zip
 - open LogCatch-master folder.
-- Just W-click [LogCatch_winLauncher.vbs]. This automatically resolve path for wish/bash/awk in msys-git windows enviroment.
-- Please create shortcut lancher by yourself.
+
+- If you have powershell (which most Windows installs do by default) highly recommend running `LogCatch_winSetup.ps1` it will not just find the paths for everything but it will also create a LogCatch.lnk shortcut and LogCatch.bat file that can be used to start it (you can pass additional args to the LogCatch.bat file).
+- If you don't have powershell or that doesn't work you can fall back to the older [LogCatch_winLauncher.vbs]. This automatically resolve path for wish/bash/awk in msys-git windows environment (Please create shortcut launcher by yourself).
+- Note while it will try everywhere in PATH and some additional normal Windows git directories if it can't find wish/awk.exe it won't work properly. You do not need to add these to your path, just temporarily set your path to include those directories for running the winSetup or winLauncher script (as it will then save the absolute path and not need to use your normal paths).
+
 
 ### Viewing log file or live Device Log
 To view log files click "Files" and browse to the log file you would like.  If you right click on the files button you can choose between "one time" and "incremental" loading.  Incremental loading runs tail itself on the file and if truncated the new file output will be put out still.  Clicking on the bullet next to the file will cause the file to reload as well.
@@ -148,7 +145,7 @@ You can filter by a specific process and (or) by a specific android tag (tags ar
 The existing session has all search/filters saved automatically to `~/.logcatch` these are reloaded on startup as well.
 
 ### Command Line Args
-These are case sensitive
+These are case sensitive, for Windows they can be specified after the logcatch.bat.
 
 - --dir [dir] - Overrides the directory for LogCatch and its other scripts
 - --clearOn [str] - If string is found in the log file everything before that string is cleared out.  Useful to essentially "start" logging when a specific event/action happens.
