@@ -2,12 +2,13 @@ set LogTypes "none brief process tag time thread threadtime long time_eclipse st
 set LogType "none"
 set LogLevels "V D I W E A F"
 set LogLevelsLong "Verbose Debug Info Warning Error Assert Fatal"
+set LogLevelsLongLower [string tolower $LogLevelsLong]
 set LogLevel(selected) "Verbose"
 
 
 # check first lineMax lines
 proc checkLogType {filename} {
-    global LogType LogLevels ForcedLogType
+    global LogType LogLevels ForcedLogType LogLevelsLong LogLevelsLongLower
     set LogType "none"
     if {"$ForcedLogType" != ""} {
         set LogType $ForcedLogType
@@ -27,7 +28,7 @@ proc checkLogType {filename} {
         set threadcnt 0   ;# thread
         set studiocnt 0   ;# studio
         set minimax 2
-        set linemax 100
+        set linemax 20
         while {[gets $rp line] >= 0 && $lcnt <= $linemax} {
             # puts $lcnt/{$line}
             set line [string map {\" \\" \{ \\{ \} \\}} "$line"]
@@ -82,7 +83,20 @@ proc checkLogType {filename} {
                             }
                         }
                     }
+
                 } else {
+                    #these first two might fail if the line is actually all lower case 
+                    set testWord [string tolower [lindex $line 1]]
+                    if {[lsearch $LogLevelsLongLower $testWord] >= 0} {
+                        set LogType "2ndWord"
+                        break
+                    }
+                    set testWord [string tolower [lindex $line 2]]
+                    if {[lsearch $LogLevelsLongLower $testWord] >= 0} {
+                        set LogType "3rdWord"
+                        break
+                    }
+
                     set colon_space [string range $line 18 19]
                     set slash20 [string index $line 20]
                     set slash21 [string index $line 21]
@@ -144,6 +158,10 @@ proc reloadProc {} {
         source $readingDir/readLog_threadtime.tcl
     } elseif {"$LogType" == "brief"} {
         source $readingDir/readLog_brief.tcl
+    } elseif {"$LogType" == "2ndWord"} {
+        source $readingDir/readLog_2ndWord.tcl
+    } elseif {"$LogType" == "3rdWord"} {  # python logs etc
+        source $readingDir/readLog_3rdWord.tcl        
     } elseif {"$LogType" == "keyword"} {
         source $readingDir/readLog_keyword.tcl
     }

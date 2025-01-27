@@ -6,7 +6,7 @@ Designed to allow easy filtering and/or highlighting or multiple patterns at onc
 This is written in tcl/tk.
 
 Features:
-- Context colored log lines. Logtype detection enhances filtering including: time, threadtime, brief, process, eclipse, and studio logs
+- Context colored log lines. Logtype detection enhances filtering including: time, threadtime, brief, process, eclipse, keyword based, python logs (and other log formats that have severity as the 2nd or 3rd 'word' in the log line), and studio logs
 - Filtering by keywords. This is done by awk regular expression like awk '/key|word/ {print}'
 - Key word/Term Searching/navigating and highlighting (up to 9 highlight/searches at once)
 - Saving all or part of log files after filtering
