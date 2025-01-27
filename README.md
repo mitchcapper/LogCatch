@@ -150,6 +150,7 @@ These are case sensitive, for Windows they can be specified after the logcatch.b
 - --dir [dir] - Overrides the directory for LogCatch and its other scripts
 - --clearOn [str] - If string is found in the log file everything before that string is cleared out.  Useful to essentially "start" logging when a specific event/action happens.
 - --logType [LogType] - force the log type to this type (rather than detecting it)
+- --file [file] - Start reading [file] as the log file
 - --console - Shows the debug console window by default
 
 For android adb connections only:

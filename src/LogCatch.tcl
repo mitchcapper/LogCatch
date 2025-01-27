@@ -6,6 +6,7 @@ set runDir [pwd]
 set procRegex ""
 set autoOpenDevice ""
 set autoClearLogOn ""
+set autoLoadFile ""
 set showConsole 0
 set ForcedLogType ""
 
@@ -32,6 +33,9 @@ foreach {opt val} $argv {
     }
     if {"$opt" == "--clearOn"} {
         set autoClearLogOn $val
+    }
+    if {"$opt" == "--file"} {
+        set autoLoadFile [regsub -all {\\} $val {/}]
     }
     if {"$opt" == "--logType"} {
         set ForcedLogType $val
@@ -2175,8 +2179,9 @@ onlyFocusEntry
 #wVector . 1 "config -takefocus"
 setupEntryKeyPressFilter
 #bind $fsrch.hword1 <Key-Up> "seekHighlight colorLbl up"
-
-if {"$autoOpenDevice" != ""} {
+if {"$autoLoadFile" != ""} {
+    loadFile $autoLoadFile
+} elseif {"$autoOpenDevice" != ""} {
     detectDevices;
 }
 #detectDevices
