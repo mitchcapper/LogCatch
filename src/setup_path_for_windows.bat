@@ -18,6 +18,7 @@ for /f "delims=" %%i in (path_list.tmp) do (
   echo %%i>> %PATH_LIST%
   echo %%i> wish_path.list
   echo @echo off > logcatch.bat
+  echo cd /d %%~dp0 >> logcatch.bat
   echo start "-" /B "%%i" src/LogCatch.tcl --dir src %%* >> logcatch.bat
   set WISH_FOUND=1
   break
@@ -35,6 +36,7 @@ for /f "delims=" %%i in (path_list.tmp) do (
 
   if not defined WISH_FOUND (
     echo @echo off > logcatch.bat
+    echo cd /d %%~dp0 >> logcatch.bat
     echo start "-" /B "%%i" -l -c "wish src/LogCatch.tcl --dir src %%*" >> logcatch.bat
   )
   break

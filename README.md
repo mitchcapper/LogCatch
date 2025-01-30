@@ -83,7 +83,7 @@ Debian/Ubuntu:
 `brew install gawk tcl-tk`
 
 ### Windows:
-Active TCL or any wish install should work but you need awk.exe as well.
+Active TCL or any wish install should work but you need awk.exe as well.  The easiest solution is install [Git for Windows](https://git-for-windows.github.io/).
 
 ## Usage
 ### Starting

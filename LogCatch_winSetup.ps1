@@ -78,8 +78,11 @@ Function GetItemPath {
 $WISH_PATH=GetItemPath "wish"
 $final_bat="logcatch.bat"
 $echoPrepend="@echo off`n"
+$workingDirectory = split-path -parent $MyInvocation.MyCommand.Definition
+#$directoryAppend="cd $workingDirectory`n"
+$directoryAppend="cd /d %~dp0`n"
 if ($null -ne $WISH_PATH) {
-	Set-Content -Path $final_bat -Value "${echoPrepend}start `"NA`" /B `"$WISH_PATH`" src/LogCatch.tcl --dir src %*"
+	Set-Content -Path $final_bat -Value "${echoPrepend}${directoryAppend}start `"NA`" /B `"$WISH_PATH`" src/LogCatch.tcl --dir src %*"
 	$WshShell = New-Object -COMObject WScript.Shell
 	$shortcutPath = "$PSScriptRoot\LogCatch.lnk"
 	$Shortcut = $WshShell.CreateShortcut($shortcutPath)
@@ -90,7 +93,7 @@ if ($null -ne $WISH_PATH) {
 }else{
 	$BASH_PATH=GetItemPath "bash"
 	if ($null -ne $BASH_PATH) {
-		Set-Content -Path $final_bat -Value "${echoPrepend}`"$BASH_PATH`" -l -c `"wish src/LogCatch.tcl --dir src %*`""
+		Set-Content -Path $final_bat -Value "${echoPrepend}${directoryAppend}`"$BASH_PATH`" -l -c `"wish src/LogCatch.tcl --dir src %*`""
 	}else {
 		Write-Error "Could not find wish.exe or bash.exe in path or known locations. Please install Tcl/Tk or Git Bash falling back to the old setup script but it probably won't work."
 		./setup_path_for_windows.bat
