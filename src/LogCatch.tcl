@@ -7,6 +7,7 @@ set procRegex ""
 set autoOpenDevice ""
 set autoClearLogOn ""
 set autoLoadFile ""
+set clearOnTruncate 0
 set showConsole 0
 set ForcedLogType ""
 
@@ -14,6 +15,8 @@ for { set i 0 } { $i < [llength $argv] } { incr i } {
     set opt [lindex $argv $i]
     if { "$opt" eq "--console" } {
         set showConsole 1
+    } elseif { [string equal -nocase "$opt" "--clearontruncate"] } {
+        set clearOnTruncate 1
     } else {
         continue
     }
@@ -57,6 +60,8 @@ set Devices ""
 set Device ""
 set NativeTagFilter ""
 set Fd ""
+set stderroutFD ""
+set stderrinFD ""
 set DBGLOG_LOAD_BUFFER 0;
 set AutoSaveDeviceLog 0; # default: 0
 set AutoSaveFileName ""
@@ -257,7 +262,15 @@ proc delayedNextSource {} {
         set NextDevice ""
     }
 }
+proc checkStderrForTruncate {fd} {
+    set cnt [gets $fd line]
+    
+    if {[string first "file truncated" $line] != -1} {
+        puts "AutoClearLog as input file truncated"
+        clearLogView
+    }
 
+}
 proc loadBuffer {fd} {
     global PollingUpdateTask logview Loading DBGLOG_LOAD_BUFFER
 
@@ -304,7 +317,7 @@ proc loadBuffer {fd} {
 }
 
 proc readLine {fd} {
-    global logview LineCount statusOne LogLevels Loading SuspendReading autoClearLogOn
+    global logview LineCount statusOne LogLevels Loading SuspendReading autoClearLogOn DBGLOG_LOAD_BUFFER
 
     if {$Loading == -1} {
         puts "Stop Loading"
@@ -537,13 +550,22 @@ proc delayedOpenSource {serial} {
 }
 
 proc closeWaitingFd {} {
-    global WaitingFd
+    global WaitingFd stderrinFD stderroutFD
     puts "closeWaitingFd"
     if {$WaitingFd != ""} {
         fileevent $WaitingFd r ""
         fconfigure $WaitingFd -blocking 0
         close $WaitingFd
         set WaitingFd ""
+    }
+    if {$stderrinFD != ""} {
+         fconfigure $stderrinFD -blocking 0
+        close $stderrinFD
+    }
+    if {$stderroutFD != ""} {
+        fileevent $stderroutFD r ""
+        fconfigure $stderroutFD -blocking 0
+        close $stderroutFD
     }
 }
 
@@ -937,7 +959,8 @@ proc getAutoSaveFileName {} {
 proc openSource {} {
     global Fd LoadFile eFilter iFilter Device LineCount \
     statusTwo status3rd AppName ADB_PATH LogType ReadingLabel ProcessFilterExpression TagFilter ProcessTagFilter ProcessAndOrTag \
-    LoadFileMode AutoSaveDeviceLog AutoSaveFileName IgnoreCaseFilter UseGnuAwk LoadFiles RemoteLogClearOnLoad NativeTagFilter
+    LoadFileMode AutoSaveDeviceLog AutoSaveFileName IgnoreCaseFilter UseGnuAwk LoadFiles RemoteLogClearOnLoad NativeTagFilter clearOnTruncate  stderroutFD stderrinFD      
+    
     closeLoadingFd
     set deny "!"
     set isFileSource [isFileSource]
@@ -959,8 +982,16 @@ proc openSource {} {
     puts "beginCondition: $beginCondition"
     if {$isFileSource} {
         updateProcessFilterStatus disabled
-        if {$LoadFileMode} {
-            set Fd [open "| tail -f -n +1 \"$LoadFile\" | awk \"$beginCondition NR > 0 && $ProcessTagFilter && $deny /$xeFilter/ && /$xiFilter/ {print}{fflush()}\" " r]
+        if {$LoadFileMode} { #load file mode means incremental loading
+            set clearWatchAdd ""
+            if {$clearOnTruncate} {
+                lassign [chan pipe] stderroutFD stderrinFD
+                set clearWatchAdd " 2>@$stderrinFD"
+                fileevent $stderroutFD r "checkStderrForTruncate $stderroutFD"
+            }
+            
+            set Fd [open "| tail -f -n +1 \"$LoadFile\" $clearWatchAdd | awk \"$beginCondition NR > 0 && $ProcessTagFilter && $deny /$xeFilter/ && /$xiFilter/ {print}{fflush()}\" " r]
+
         } else {
             set Fd [open "| awk \"$beginCondition NR > 0 && $ProcessTagFilter && $deny /$xeFilter/ && /$xiFilter/ {print}{fflush()}\" $LoadFiles" r]
         }

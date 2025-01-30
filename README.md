@@ -152,6 +152,7 @@ These are case sensitive, for Windows they can be specified after the logcatch.b
 - --logType [LogType] - force the log type to this type (rather than detecting it)
 - --file [file] - Start reading [file] as the log file
 - --console - Shows the debug console window by default
+- --clearOnTruncate - Clear the buffer if the file is truncated/overwritten
 
 For android adb connections only:
 - --proc [procRegex] - Takes a regex if a process matches the regex the logs are filtered to only output from that process
