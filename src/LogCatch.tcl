@@ -43,6 +43,9 @@ foreach {opt val} $argv {
     if {"$opt" == "--logType"} {
         set ForcedLogType $val
     }
+	if {"$opt" == "--tail"} {
+		set TrackTail 1
+	}
 }
 if { $showConsole } {
     console show
