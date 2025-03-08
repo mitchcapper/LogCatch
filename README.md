@@ -29,14 +29,12 @@ Android Specific Features:
 	- [Mac](#mac)
 	- [Windows](#windows)
 - [Install](#install)
-	- [Linux:](#linux-1)
-	- [Mac:](#mac-1)
-	- [Windows:](#windows-1)
+	- [Linux](#linux-1)
+	- [Mac](#mac-1)
+	- [Windows](#windows-1)
 - [Usage](#usage)
 	- [Starting](#starting)
 	- [Linux/Mac user](#linuxmac-user)
-- [on terminal.](#on-terminal)
-- [or](#or)
 	- [Windows user](#windows-user)
 	- [Viewing log file or live Device Log](#viewing-log-file-or-live-device-log)
 	- [Searching / Highlights](#searching--highlights)
@@ -46,6 +44,7 @@ Android Specific Features:
 	- [Saving search terms/filtering](#saving-search-termsfiltering)
 	- [Command Line Args](#command-line-args)
 - [Log Types](#log-types)
+- [Colors](#colors)
 - [Author](#author)
 
 <!-- /MarkdownTOC -->
@@ -70,19 +69,19 @@ wish & gawk (in path as awk.exe) and for direct android connections the android-
 Easiest way to get all these is install [Git for Windows](https://git-for-windows.github.io/) or msys-git. This contains git, bash, awk, wish all in one.  
 
 ## Install
-### Linux:
+### Linux
 Arch:
 `pacman -S --needed gawk tk android-tools`
 
 Debian/Ubuntu:
 `apt-get install gawk tk android-tools`
 
-### Mac:
+### Mac
 `prepare android-sdk`
 
 `brew install gawk tcl-tk`
 
-### Windows:
+### Windows
 Active TCL or any wish install should work but you need awk.exe as well.  The easiest solution is install [Git for Windows](https://git-for-windows.github.io/).
 
 ## Usage
@@ -93,12 +92,12 @@ To launch app
 - `git clone https://github.com/pikey8706/LogCatch.git`
 - open LogCatch folder.
 - Just W-click [runOnShell].
-<pre>
+```
 #on terminal.
 $ ./runOnShell
 #or
 $ wish src/LogCatch.tcl --dir src
-</pre>
+```
 
 ### Windows user
 Assuming you have done installed git.
@@ -153,13 +152,17 @@ These are case sensitive, for Windows they can be specified after the logcatch.b
 - --file [file] - Start reading [file] as the log file
 - --console - Shows the debug console window by default
 - --clearOnTruncate - Clear the buffer if the file is truncated/overwritten
+- --tail - Enable tail tracking by default
 
 For android adb connections only:
 - --proc [procRegex] - Takes a regex if a process matches the regex the logs are filtered to only output from that process
 - --device [deviceRegex] - Takes a regex and if an android device with that name is found it is automatically attached to it
 
 ## Log Types
-- LogCatch determines the type of log from the first lineMax(100 by default) lines of the log file.  The log type is currently only used for extracting the LogLevel for the line all other functionality works no matter the file type.  The loglevel also allows for initial colorization of the line.  When logcat is used it specifically is set by us to output in threadtime format and we siwtch to using that.  You can right click on the log type (bottom right) to force a specific type.  The highlight type highlights based on keywords in the line (fatal,error,warning, etc).
+LogCatch determines the type of log from the first lineMax(100 by default) lines of the log file.  The log type is currently only used for extracting the LogLevel for the line all other functionality works no matter the file type.  The loglevel allows for initial colorization of the line and filtering based on level.  When logcat is used it specifically is set by us to output in threadtime format and we switch to using that.  You can right click on the log type (bottom right) to force a specific type.  The 'keyword' type highlights based on keywords in the line (fatal,error,warning, etc).
+
+## Colors
+By default every log level gets a different color and there are 9 different colors used for the search highlight boxes.   You can edit these colors by editing text_color_tags.list in the config directory, do not edit the first word on each line as that is the name we lookup the color by.   You can see all the possible color names tcl supports in the [TclColors.md](config/TclColors.md) file.
 
 ## Author
 Hirohito Sasaki
