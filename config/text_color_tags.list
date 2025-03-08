@@ -1,11 +1,21 @@
-# ColorTagName foregroundColor backgroundColor
+# format: ColorTagName foregroundColor backgroundColor
+# When editing this file do NOT change the ColorTagName (first word on the line) we look things up by this.
+# All colors for tcl can be found at: https://www.tcl-lang.org/man/tcl/TkCmd/colors.htm or look at the TclColors.md file that shows a preview of them as well
 :TextColorTags
-# log level colors (Do Not Modify)
-colorBlk white
-colorBlu lightblue
-colorGre chartreuse3
-colorOrg orange
-colorRed red
+# set LogLevels "G V D I W E A F"
+# set LogLevelsLong "Generic Verbose Debug Info Warning Error Assert Fatal"
+
+# log level colors (suggested to not modify)
+
+colorGeneric GhostWhite
+colorVerbose gray
+colorDebug LightBlue1
+colorInfo SeaGreen2
+colorWarning orange
+colorError OrangeRed1
+colorAssert MediumPurple1
+colorFatal red
+
 # search highlight colors (manual add OK)
 color1Lbl black lightblue
 color2AQm black aquamarine1

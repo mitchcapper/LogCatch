@@ -338,7 +338,7 @@ proc readLine {fd} {
         }
         set loglevel [getLogLevel "$line"]
         if {[lsearch $LogLevels "$loglevel"] == -1} {
-            set loglevel "V"
+            set loglevel "G"
         }
         set acceptLevel [checkAcceptLevel $loglevel]
         if {$acceptLevel} {

@@ -1,9 +1,9 @@
 set LogTypes "none brief process tag time thread threadtime long time_eclipse studio keyword"
 set LogType "none"
-set LogLevels "V D I W E A F"
-set LogLevelsLong "Verbose Debug Info Warning Error Assert Fatal"
+set LogLevels "G V D I W E A F"
+set LogLevelsLong "Generic Verbose Debug Info Warning Error Assert Fatal"
 set LogLevelsLongLower [string tolower $LogLevelsLong]
-set LogLevel(selected) "Verbose"
+set LogLevel(selected) "Generic"
 
 
 # check first lineMax lines

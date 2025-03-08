@@ -25,7 +25,7 @@ menu .mbar
 #. config -menu .mbar
 # Apple menu
 # menu .mbar.apple
-# .mbar add cascade -menu .mbar.apple 
+# .mbar add cascade -menu .mbar.apple
 # .mbar.apple add command -label "About my Applications"
 # File menu
 menu .mbar.f -tearoff 0
@@ -204,7 +204,7 @@ pack [button $fsrch.clr -text "Clear Log" -command clearLogView] -side right
 # Highlight
 pack [label $fsrch.highlight -text "Highlight:"] -side left
 global LogLevelTags TextViewColorOptions
-set LogLevelTags [list colorBlk colorBlu colorGre colorOrg colorRed colorBlk colorBlk]
+set LogLevelTags [list colorGeneric colorVerbose colorDebug colorInfo colorWarning colorError colorAssert colorFatal]
 set TextViewColorTag "colorTextView"
 # load text color LogLevelTags
 source $runDir/text_color_loader.tcl
@@ -337,7 +337,7 @@ proc wrapMenu {} {
 }
 proc logTypeMenu {} {
     global ForcedLogType LogTypes
-    
+
 
     set m .logtype
     menu $m -tearoff 0
