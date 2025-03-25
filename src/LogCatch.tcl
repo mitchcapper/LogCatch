@@ -10,6 +10,7 @@ set autoLoadFile ""
 set clearOnTruncate 0
 set showConsole 0
 set ForcedLogType ""
+set ForcedTrackTail 0
 
 for { set i 0 } { $i < [llength $argv] } { incr i } {
     set opt [lindex $argv $i]
@@ -17,6 +18,8 @@ for { set i 0 } { $i < [llength $argv] } { incr i } {
         set showConsole 1
     } elseif { [string equal -nocase "$opt" "--clearontruncate"] } {
         set clearOnTruncate 1
+    } elseif { "$opt" eq "--tail" } {
+        set ForcedTrackTail 1
     } else {
         continue
     }
@@ -43,9 +46,6 @@ foreach {opt val} $argv {
     if {"$opt" == "--logType"} {
         set ForcedLogType $val
     }
-	if {"$opt" == "--tail"} {
-		set TrackTail 1
-	}
 }
 if { $showConsole } {
     console show
@@ -2213,6 +2213,9 @@ onlyFocusEntry
 #wVector . 1 "config -takefocus"
 setupEntryKeyPressFilter
 #bind $fsrch.hword1 <Key-Up> "seekHighlight colorLbl up"
+if {$ForcedTrackTail} {
+	set TrackTail 1
+}
 if {"$autoLoadFile" != ""} {
     loadFile $autoLoadFile
 } elseif {"$autoOpenDevice" != ""} {
