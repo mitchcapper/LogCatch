@@ -1,6 +1,7 @@
 Set-StrictMode -version latest;
 $ErrorActionPreference = "Stop";
-
+$workingDirectory = split-path -parent $MyInvocation.MyCommand.Definition
+Set-Location $workingDirectory
 $TO_FIND=@("wish", "awk", "bash")
 
 $backupPaths = @() # List of paths to search if the executable is not found in the normal path, these backup paths are searched recursively
@@ -78,25 +79,26 @@ Function GetItemPath {
 $WISH_PATH=GetItemPath "wish"
 $final_bat="logcatch.bat"
 $echoPrepend="@echo off`n"
-$workingDirectory = split-path -parent $MyInvocation.MyCommand.Definition
-#$directoryAppend="cd $workingDirectory`n"
-$directoryAppend="cd /d %~dp0`n"
+
+
+# "%~dp0src/LogCatch.tcl" --dir "%~dp0src"
 if ($null -ne $WISH_PATH) {
-	Set-Content -Path $final_bat -Value "${echoPrepend}${directoryAppend}start `"NA`" /B `"$WISH_PATH`" src/LogCatch.tcl --dir src %*"
+	Set-Content -Path $final_bat -Value "${echoPrepend}start `"NA`" /B `"$WISH_PATH`" `"%~dp0src/LogCatch.tcl`" --dir `"%~dp0src`" %*"
 	$WshShell = New-Object -COMObject WScript.Shell
 	$shortcutPath = "$PSScriptRoot\LogCatch.lnk"
 	$Shortcut = $WshShell.CreateShortcut($shortcutPath)
 	$Shortcut.TargetPath = $WISH_PATH
-	$Shortcut.Arguments = "src/LogCatch.tcl --dir src"
+	$Shortcut.Arguments = "`"$workingDirectory/src/LogCatch.tcl`" --dir `"$workingDirectory/src`""
 	$Shortcut.Save()
 	Write-Host "Shortcut created at $shortcutPath or use $final_bat to start"
 }else{
 	$BASH_PATH=GetItemPath "bash"
 	if ($null -ne $BASH_PATH) {
-		Set-Content -Path $final_bat -Value "${echoPrepend}${directoryAppend}`"$BASH_PATH`" -l -c `"wish src/LogCatch.tcl --dir src %*`""
+		Set-Content -Path $final_bat -Value "${echoPrepend}`"$BASH_PATH`" -l -c `"wish `"$workingDirectory/src/LogCatch.tcl`" --dir `"$workingDirectory/src`" %*`""
 	}else {
-		Write-Error "Could not find wish.exe or bash.exe in path or known locations. Please install Tcl/Tk or Git Bash falling back to the old setup script but it probably won't work."
+		Write-Error "Could not find wish.exe or bash.exe in path or known locations. Please install Tcl/Tk or Git Bash. Falling back to the old setup script, but it probably won't work."
 		./setup_path_for_windows.bat
 	}
-	
+
 }
+Set-Location -Path -
