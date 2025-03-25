@@ -77,7 +77,7 @@ proc menuLogcatch {w} {
 }
 
 proc showPreferences {} {
-    global ADB_PATH MenuFace RemoteLogClearOnLoad
+    global ADB_PATH MenuFace RemoteLogClearOnLoad clearOnTruncate autoClearLogOn showConsole
     set w .preferences
     if {[winfo exists $w]} {
         raise $w
@@ -88,6 +88,7 @@ proc showPreferences {} {
     wm protocol $w WM_DELETE_WINDOW "destroy $w"
     wm transient $w .
     pack [frame $w.bottom -relief raised] -fill x -expand yes -side bottom -anchor s
+    pack [button $w.bottom.showconsolebutton -text "Show Debug Console" -command "console show"] -side left
     pack [button $w.bottom.close -text Close -command "destroy $w"] -side right
     pack [frame $w.f1] -fill x
     pack [label $w.f1.adblocationlabel -text "ADB_PATH : "] -side left
@@ -104,6 +105,20 @@ proc showPreferences {} {
     pack [button $w.f3.editorpath -text "Browse" -command "changeEditor $w"] -side right
     pack [frame $w.f4] -fill x
     pack [checkbutton $w.f4.remoteclearbox -text "Clear ADB Log on Device Connect" -variable RemoteLogClearOnLoad -relief ridge] -side right
+
+    # Note about non-persistent preferences
+    pack [frame $w.note] -fill x
+    pack [label $w.note.text -text "The following preferences are not saved between sessions:" -fg darkblue -font "TkDefaultFont 9 bold"] -anchor w
+
+    # New preferences for clearOnTruncate and autoClearLogOn
+    pack [frame $w.f5] -fill x
+    pack [checkbutton $w.f5.truncate -text "Clear Log View When Input File is Truncated" -variable clearOnTruncate -relief ridge] -side left
+
+    pack [frame $w.f6] -fill x
+    pack [label $w.f6.clearon_label -text "Clear Log When Line Contains: "] -side left
+    pack [entry $w.f6.clearon_entry -textvariable autoClearLogOn] -side left -fill x -expand yes
+
+    # Show console button in preferences
 
     after 300 refreshGeometry $w
 }
