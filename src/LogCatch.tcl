@@ -267,7 +267,7 @@ proc delayedNextSource {} {
 }
 proc checkStderrForTruncate {fd} {
     set cnt [gets $fd line]
-    
+
     if {[string first "file truncated" $line] != -1} {
         puts "AutoClearLog as input file truncated"
         clearLogView
@@ -513,7 +513,7 @@ proc loadDevice {} {
     closeLoadingFd
     closeWaitingFd
     stopAutoSavingFile
- 
+
     set devices $Device
     foreach xdevice $Devices {
         if {![string match $Device $xdevice]} {
@@ -869,33 +869,33 @@ proc loadLastState {} {
                 }
             } elseif {$flag == 1} {
                 lappend LoadedFiles $line
-            } elseif {$flag == 2} { 
+            } elseif {$flag == 2} {
                 set iFilter $line
-            } elseif {$flag == 3} { 
+            } elseif {$flag == 3} {
                 set eFilter $line
-            } elseif {$flag == 4} { 
+            } elseif {$flag == 4} {
                 set sWord $line
-            } elseif {$flag == 5} { 
+            } elseif {$flag == 5} {
                 set WrapMode $line
-            } elseif {$flag == 6} { 
+            } elseif {$flag == 6} {
                 set Editor $line
-            } elseif {$flag == 7} { 
+            } elseif {$flag == 7} {
                 set Encoding $line
-            } elseif {$flag == 8} { 
+            } elseif {$flag == 8} {
                 set SDK_PATH $line
-            } elseif {$flag == 9} { 
+            } elseif {$flag == 9} {
                 set ADB_PATH $line
-            } elseif {$flag == 10} { 
+            } elseif {$flag == 10} {
                 set NO_ADB $line
-            } elseif {$flag == 11} { 
+            } elseif {$flag == 11} {
                 set MenuFace $line
-            } elseif {$flag == 12} { 
+            } elseif {$flag == 12} {
                 set TagFilter $line
-            } elseif {$flag == 20} { 
+            } elseif {$flag == 20} {
                 set LogViewFontName $line
-            } elseif {$flag == 21} { 
+            } elseif {$flag == 21} {
                 set LogViewFontSize $line
-            } elseif {$flag == 22} { 
+            } elseif {$flag == 22} {
                 set FilterDeadProcess $line
             } elseif {$flag == 23} {
                 set LoadFileMode $line
@@ -962,8 +962,8 @@ proc getAutoSaveFileName {} {
 proc openSource {} {
     global Fd LoadFile eFilter iFilter Device LineCount \
     statusTwo status3rd AppName ADB_PATH LogType ReadingLabel ProcessFilterExpression TagFilter ProcessTagFilter ProcessAndOrTag \
-    LoadFileMode AutoSaveDeviceLog AutoSaveFileName IgnoreCaseFilter UseGnuAwk LoadFiles RemoteLogClearOnLoad NativeTagFilter clearOnTruncate  stderroutFD stderrinFD      
-    
+    LoadFileMode AutoSaveDeviceLog AutoSaveFileName IgnoreCaseFilter UseGnuAwk LoadFiles RemoteLogClearOnLoad NativeTagFilter clearOnTruncate  stderroutFD stderrinFD TrackTail
+
     closeLoadingFd
     set deny "!"
     set isFileSource [isFileSource]
@@ -983,7 +983,11 @@ proc openSource {} {
 
     set beginCondition [expr $UseGnuAwk && $IgnoreCaseFilter ? "{BEGIN{IGNORECASE = 1}}" : "{BEGIN{}}"]
     puts "beginCondition: $beginCondition"
+	set procOpenCmd ""
     if {$isFileSource} {
+		if {$TrackTail && ! $LoadFileMode} {
+			tk_messageBox -title "TrackTail mode invalid in One Shot loads" -message "You can't track tail unless the file is opened in incremental read mode, either untrack TrackTail (bottom right) or right click on 'Files...' and select incremental" -type ok -icon warning
+		}
         updateProcessFilterStatus disabled
         if {$LoadFileMode} { #load file mode means incremental loading
             set clearWatchAdd ""
@@ -992,11 +996,11 @@ proc openSource {} {
                 set clearWatchAdd " 2>@$stderrinFD"
                 fileevent $stderroutFD r "checkStderrForTruncate $stderroutFD"
             }
-            
-            set Fd [open "| tail -f -n +1 \"$LoadFile\" $clearWatchAdd | awk \"$beginCondition NR > 0 && $ProcessTagFilter && $deny /$xeFilter/ && /$xiFilter/ {print}{fflush()}\" " r]
+            set procOpenCmd "| tail -f -n +1 \"$LoadFile\" $clearWatchAdd | awk \"$beginCondition NR > 0 && $ProcessTagFilter && $deny /$xeFilter/ && /$xiFilter/ {print}{fflush()}\" "
+
 
         } else {
-            set Fd [open "| awk \"$beginCondition NR > 0 && $ProcessTagFilter && $deny /$xeFilter/ && /$xiFilter/ {print}{fflush()}\" $LoadFiles" r]
+            set procOpenCmd "| awk \"$beginCondition NR > 0 && $ProcessTagFilter && $deny /$xeFilter/ && /$xiFilter/ {print}{fflush()}\" $LoadFiles"
         }
         set title [file tail $Device]
     } else {
@@ -1014,15 +1018,16 @@ proc openSource {} {
         reloadProc
         puts "AutoSaveDeviceLog: $AutoSaveDeviceLog file: $AutoSaveFileName"
         if {$AutoSaveDeviceLog} {
-            set Fd [open "|tail -f -n +1 \"$AutoSaveFileName\" | awk \"$beginCondition NR > 0 && $ProcessTagFilter && $deny /$xeFilter/ && /$xiFilter/ {print}{fflush()}\" " r]
+            set procOpenCmd "|tail -f -n +1 \"$AutoSaveFileName\" | awk \"$beginCondition NR > 0 && $ProcessTagFilter && $deny /$xeFilter/ && /$xiFilter/ {print}{fflush()}\" "
         } else {
             if {$RemoteLogClearOnLoad} {
                 exec $ADB_PATH -s $device logcat --clear
             }
-            puts "Running command: $ADB_PATH -s $device logcat -v threadtime $NativeTagFilter | awk \"$beginCondition NR > 0 && $ProcessTagFilter && $deny /$xeFilter/ && /$xiFilter/ {print}{fflush()}\" "
-            set Fd [open "|$ADB_PATH -s $device logcat -v threadtime $NativeTagFilter | awk \"$beginCondition NR > 0 && $ProcessTagFilter && $deny /$xeFilter/ && /$xiFilter/ {print}{fflush()}\" " r]
+            set procOpenCmd "|$ADB_PATH -s $device logcat -v threadtime $NativeTagFilter | awk \"$beginCondition NR > 0 && $ProcessTagFilter && $deny /$xeFilter/ && /$xiFilter/ {print}{fflush()}\" "
         }
     }
+    set Fd [open $procOpenCmd r]
+	puts "FD Opened with: $procOpenCmd"
     puts "src: $Device fd: $Fd"
     puts "eFilter: $xeFilter"
     puts "ifilter: $xiFilter"
@@ -1433,9 +1438,9 @@ proc escapeSlash {s} {
     for {set i 0} {$i < $len} {incr i} {
         set c [string index $s $i]
         if {$c == "/"} {
-            append x "\\\\" 
+            append x "\\\\"
         }
-        append x $c 
+        append x $c
     }
     return $x
 }
@@ -1448,7 +1453,7 @@ proc escapeSpace {s} {
         if {"$c" == " "} {
             append x "\\"
         }
-        append x $c 
+        append x $c
     }
     return $x
 }
@@ -1493,7 +1498,7 @@ proc UpdateNativeTagFilterForSelected {} {
 
     }
     set NativeTagFilter ""
-    foreach key [array names FinalLogLevel] { 
+    foreach key [array names FinalLogLevel] {
         append NativeTagFilter "$key:$FinalLogLevel($key)" " "
     }
 
@@ -1505,7 +1510,7 @@ proc getLogLines {sdx edx} {
     return [$logview get $sdx $edx]
 }
 
-proc getSelectedLines {} { 
+proc getSelectedLines {} {
     global logview
     set rangenums [split [$logview tag ranges sel] " ."]
     set sl [lindex $rangenums 0]
@@ -1614,7 +1619,7 @@ proc detectDevices {} {
            .mbar.i.d add radiobutton -label $device -variable Device -value $device -command loadDevice
        }
     }
-    
+
     updateSourceList
     if {"$autoOpenDevice" != ""} {
         foreach device $Devices {
@@ -1627,7 +1632,7 @@ proc detectDevices {} {
         set autoOpenDevice ""
     }
 
-    
+
     return [lindex $Devices 0]
 }
 
@@ -2052,7 +2057,7 @@ proc selectLines {{opt all}} {
     global LogView
     $LogView config -state normal
     if {"all" == "$opt"} {
-        $LogView tag add sel 1.0 end        
+        $LogView tag add sel 1.0 end
     }
     $LogView config -state disabled
 #ttk::button $LogView.b -text "Push Me"

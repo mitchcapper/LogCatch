@@ -112,7 +112,7 @@ proc showPreferences {} {
 
     # New preferences for clearOnTruncate and autoClearLogOn
     pack [frame $w.f5] -fill x
-    pack [checkbutton $w.f5.truncate -text "Clear Log View When Input File is Truncated" -variable clearOnTruncate -relief ridge] -side left
+    pack [checkbutton $w.f5.truncate -text "Clear Log View When Input File is Truncated (must reload current file to take effect)" -variable clearOnTruncate -relief ridge] -side left
 
     pack [frame $w.f6] -fill x
     pack [label $w.f6.clearon_label -text "Clear Log When Line Contains: "] -side left

@@ -66,7 +66,7 @@ From macOS Monterery, tk vesion 8.6.12(or over) from Homebrew can run this app.
 ### Windows
 wish & gawk (in path as awk.exe) and for direct android connections the android-sdk for adb.
 
-Easiest way to get all these is install [Git for Windows](https://git-for-windows.github.io/) or msys-git. This contains git, bash, awk, wish all in one.  
+Easiest way to get all these is install [Git for Windows](https://git-for-windows.github.io/) or msys-git. This contains git, bash, awk, wish all in one.
 
 ## Install
 ### Linux
@@ -113,7 +113,7 @@ or
 
 
 ### Viewing log file or live Device Log
-To view log files click "Files" and browse to the log file you would like.  If you right click on the files button you can choose between "one time" and "incremental" loading.  Incremental loading runs tail itself on the file and if truncated the new file output will be put out still.  Clicking on the bullet next to the file will cause the file to reload as well.
+To view log files click "Files" and browse to the log file you would like.  If you right click on the files button you can choose between "one time" and "incremental" loading.  Incremental loading runs tail itself on the file and if truncated the new file output will be put out still.  Clicking on the bullet next to the file will cause the file to reload as well.  **Note: TrackTail only works with incremental loading**
 
 To see log from connected devices after app launched:
 - you should select android-sdk-directory or adb including directory from popup window.
@@ -126,7 +126,7 @@ The primary interface shows 9 colored squares directly above the log file itself
 
 ### Tailing / Suspending Reads
 You can automatically scroll to the bottom of the log by having the "TrackTail" checked at the bottom right of the screen.
-You can temporarily suspend logging new log lines to the log window by checking "SuspendRead" at the bottom right, note lines that come in while suspended are discarded.
+You can temporarily suspend logging new log lines to the log window by checking "SuspendRead" at the bottom right, note lines that come in while suspended are discarded. **Note: TrackTail only works with incremental loading**
 
 ### Filtering
 Aside from the general minimal log level (verbose, trace, etc) configured in the upper left you can easily filter based on specific terms.  Changing any filter (when hitting enter) will clear the log view and reload the log file, or for a log stream it will only effect new log lines.
@@ -152,7 +152,7 @@ These are case sensitive, for Windows they can be specified after the logcatch.b
 - --file [file] - Start reading [file] as the log file
 - --console - Shows the debug console window by default
 - --clearOnTruncate - Clear the buffer if the file is truncated/overwritten
-- --tail - Enable tail tracking by default
+- --tail - Enable tail tracking by default and disables one shot file loading
 
 For android adb connections only:
 - --proc [procRegex] - Takes a regex if a process matches the regex the logs are filtered to only output from that process
