@@ -1557,15 +1557,20 @@ proc saveLines {{which "all"}} {
 
 proc getModelOS {device} {
     global CONST_MODEL CONST_VERSION ADB_PATH
-    set model [exec $ADB_PATH -s $device shell getprop $CONST_MODEL]
-    set m ""
-    foreach word $model {
-        append m $word
-    }
-    set model $m
-    set osversion [lindex [exec $ADB_PATH -s $device shell getprop $CONST_VERSION] 0]
-    puts "\"$osversion\":$device\""
-    return ${model}/${osversion}
+	try {
+
+		set model [exec $ADB_PATH -s $device shell getprop $CONST_MODEL]
+		set m ""
+		foreach word $model {
+			append m $word
+		}
+		set model $m
+		set osversion [lindex [exec $ADB_PATH -s $device shell getprop $CONST_VERSION] 0]
+		puts "\"$osversion\":$device\""
+		return ${model}/${osversion}
+	} on error {errMsg opts} {
+		return $"error getting model, maybe offline: $errMsg"
+	}
 }
 
 proc getDevices {} {
