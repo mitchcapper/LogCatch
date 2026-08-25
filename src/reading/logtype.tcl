@@ -26,6 +26,7 @@ proc checkLogType {filename} {
         set timecnt 0     ;# time
         set timeecnt 0    ;# time eclipse cnt
         set threadcnt 0   ;# thread
+        set threadtimecnt 0 ;# threadtime
         set studiocnt 0   ;# studio
         set minimax 2
         set linemax 20

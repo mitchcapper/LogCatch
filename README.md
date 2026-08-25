@@ -122,7 +122,7 @@ To see log from connected devices after app launched:
 - click Device name then log will be shown in window.
 
 ### Searching / Highlights
-The primary interface shows 9 colored squares directly above the log file itself.  You can put a search term into any of these boxes and hit enter, and every instance of that term will be highlighted (the total matches are shown on the right side of the box).  You can search/seek the term by hitting then up and down arrow keys while within the respective highlight box.  Please note highlights/searches are case sensitive.
+The primary interface shows 9 colored squares directly above the log file itself.  You can put a search term into any of these boxes and hit enter, and every instance of that term will be highlighted (the total matches are shown on the right side of the box).  You can search/seek the term by hitting then up and down arrow keys while within the respective highlight box.  Please note highlights/searches are no longer case sensitive.
 
 ### Tailing / Suspending Reads
 You can automatically scroll to the bottom of the log by having the "TrackTail" checked at the bottom right of the screen.

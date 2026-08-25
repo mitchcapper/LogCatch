@@ -2,7 +2,7 @@
 # \
 exec wish "$0" -- "$@"
 
-set runDir [pwd]
+set runDir [file dirname [file normalize [info script]]]
 set procRegex ""
 set autoOpenDevice ""
 set autoClearLogOn ""
@@ -27,24 +27,18 @@ for { set i 0 } { $i < [llength $argv] } { incr i } {
     incr i -1
 }
 
+if {[llength $argv] % 2} {
+    puts stderr "LogCatch: odd number of option/value arguments: $argv"
+}
 foreach {opt val} $argv {
-    if {"$opt" == "--dir"} {
-        set runDir $val
-    }
-    if {"$opt" == "--proc"} {
-        set procRegex $val
-    }
-    if {"$opt" == "--device"} {
-        set autoOpenDevice $val
-    }
-    if {"$opt" == "--clearOn"} {
-        set autoClearLogOn $val
-    }
-    if {"$opt" == "--file"} {
-        set autoLoadFile [regsub -all {\\} $val {/}]
-    }
-    if {"$opt" == "--logType"} {
-        set ForcedLogType $val
+    switch -exact -- $opt {
+        --dir     { set runDir [file normalize $val] }
+        --proc    { set procRegex $val }
+        --device  { set autoOpenDevice $val }
+        --clearOn { set autoClearLogOn $val }
+        --file    { set autoLoadFile [regsub -all {\\} $val {/}] }
+        --logType { set ForcedLogType $val }
+        default   { puts stderr "LogCatch: ignoring unknown option \"$opt\"" }
     }
 }
 if { $showConsole } {
@@ -103,8 +97,7 @@ set FilterDeadProcess 1; # 0: none, 1: only the latest dead process, -1: all the
 set ProcessAndOrTag "or"
 set ProcessTagFilter ""
 set TagFilter ""
-set IgnoreCaseFilter 0
-set UseGnuAwk 0
+set IgnoreCaseFilter 1; # awk log filtering is case-insensitive by default
 set LogView ""
 set LastLogLevel "V"
 set Win "."
@@ -171,13 +164,10 @@ proc setEditor {} {
     }
 }
 
-proc checkGnuAwk {} {
-    global UseGnuAwk
-    set foundStatus [catch {exec awk --version | grep -qs "GNU Awk"}]
-    set UseGnuAwk [expr $foundStatus == 0 ? 1 : 0]
-    puts "UseGnuAwk: $UseGnuAwk"
-}
-checkGnuAwk
+# GNU Awk 5.0+ is a hard requirement (see README) - the log pipeline relies on
+# gawk's IGNORECASE. The old checkGnuAwk probe shelled out to
+# `awk --version | grep`, which reported "not gawk" whenever grep was missing
+# from PATH and then silently hid the case-insensitive toggle.
 
 # Windows
 source $runDir/ui/windows.tcl
@@ -552,41 +542,63 @@ proc delayedOpenSource {serial} {
     openSource
 }
 
-proc closeWaitingFd {} {
-    global WaitingFd stderrinFD stderroutFD
-    puts "closeWaitingFd"
-    if {$WaitingFd != ""} {
-        fileevent $WaitingFd r ""
-        fconfigure $WaitingFd -blocking 0
-        close $WaitingFd
-        set WaitingFd ""
+# Tcl has no signal primitive, and an explicit kill is genuinely required here:
+# closing a non-blocking command pipeline detaches the children without waiting,
+# and `tail -f` / `adb logcat` only notice the closed pipe when they next write,
+# which on a quiet device or an idle file may be never.
+#
+# Kill BEFORE close: once close has detached them Tcl may reap the pids and the
+# OS can recycle them, at which point we would be killing an unrelated process.
+# Run detached (&) so we never stall the event loop - closeLoadingFd runs on
+# every filter change.
+#
+# Deliberately no `taskkill /T`: adb may have spawned the shared adb server as a
+# child, and a tree kill would take it down for every other tool on the machine.
+proc killPids {pids} {
+    global PLATFORM
+    foreach p $pids {
+        if {$PLATFORM == "windows"} {
+            catch {exec taskkill /F /PID $p > NUL 2> NUL &}
+        } else {
+            catch {exec kill -TERM $p > /dev/null 2> /dev/null &}
+        }
     }
+}
+
+# stderr side-channel used by clearOnTruncate; created in openSource
+proc closeStderrPipe {} {
+    global stderrinFD stderroutFD
     if {$stderrinFD != ""} {
-         fconfigure $stderrinFD -blocking 0
-        close $stderrinFD
+        fconfigure $stderrinFD -blocking 0
+        catch {close $stderrinFD}
+        set stderrinFD ""
     }
     if {$stderroutFD != ""} {
         fileevent $stderroutFD r ""
         fconfigure $stderroutFD -blocking 0
-        close $stderroutFD
+        catch {close $stderroutFD}
+        set stderroutFD ""
+    }
+}
+proc closeWaitingFd {} {
+    global WaitingFd
+    puts "closeWaitingFd"
+    if {$WaitingFd != ""} {
+        fileevent $WaitingFd r ""
+        killPids [pid $WaitingFd]
+        fconfigure $WaitingFd -blocking 0
+        catch {close $WaitingFd}
+        set WaitingFd ""
     }
 }
 
 proc stopAutoSavingFile {} {
-    global AutoSaveProcessId PLATFORM
+    global AutoSaveProcessId
     if {$AutoSaveProcessId != ""} {
-        set err_status 0
-        set err_msg ""
-        if {$PLATFORM == "windows"} {
-            puts "taskkill /F /PID $AutoSaveProcessId"
-            set err_status [catch {exec  taskkill /F /PID $AutoSaveProcessId} err_msg]
-        } else {
-            puts "kill -9 $AutoSaveProcessId"
-            set err_status [catch {exec kill -9 $AutoSaveProcessId} err_msg]
-        }
-        if {$err_status} {
-            puts "err_msg: $err_msg"
-        }
+        # exec ... & returns a *list* of pids, so this must be looped, not
+        # handed to taskkill as one argument.
+        puts "killing autosave pid(s): $AutoSaveProcessId"
+        killPids $AutoSaveProcessId
         set AutoSaveProcessId ""
     }
 }
@@ -699,7 +711,7 @@ proc clearHistory {w} {
     set newn [llength $LoadedFiles]
 
     updateLoadedFiles
-    tk_messageBox -title "" -message "Failed to open log: $Device ." -type ok -icon error
+    # history updated
 }
 
 proc showAbout {} {
@@ -784,7 +796,7 @@ TagFilter hWord LogViewFontName LogViewFontSize FilterDeadProcess IgnoreCaseFilt
         puts $fdW $TrackTail
         puts $fdW ":AutoSaveDeviceLog"
         puts $fdW $AutoSaveDeviceLog
-        puts $fdW ":IgnoreCaseFilter"
+        puts $fdW ":IgnoreCaseFilterV2"
         puts $fdW $IgnoreCaseFilter
         puts $fdW ":LogLevel(selected)"
         puts $fdW $LogLevel(selected)
@@ -795,7 +807,7 @@ TagFilter hWord LogViewFontName LogViewFontSize FilterDeadProcess IgnoreCaseFilt
 
 proc loadLastState {} {
     global LoadedFiles env WrapMode iFilter eFilter sWord Editor SDK_PATH ADB_PATH NO_ADB MenuFace TagFilter
-    global hWord LogViewFontName LogViewFontSize FilterDeadProcess LogLevelTags TextColorTags IgnoreCaseFilter RemoteLogClearOnLoad TrackTail NativeTagFilter wProcessAndOr
+    global hWord LogViewFontName LogViewFontSize FilterDeadProcess LogLevelTags TextColorTags IgnoreCaseFilter RemoteLogClearOnLoad TrackTail NativeTagFilter wProcessAndOr ProcessAndOrTagSet
     global LoadFileMode AutoSaveDeviceLog LogLevel
     set dir "$env(HOME)/.logcatch"
     set loadLastState "last.state"
@@ -860,7 +872,7 @@ proc loadLastState {} {
                     set flag 30
                 } elseif {[string match ":AutoSaveDeviceLog" $line]} {
                     set flag 24
-                } elseif {[string match ":IgnoreCaseFilter" $line]} {
+                } elseif {[string match ":IgnoreCaseFilterV2" $line]} {
                     set flag 25
                 } elseif {[string match ":LogLevel(selected)" $line]} {
                     set flag 26
@@ -944,7 +956,7 @@ proc isFileSource {} {
 
 proc getAutoSaveFileName {} {
     global Device
-    set dateTime [exec date +%Y_%m%d_%H%M%S]
+    set dateTime [clock format [clock seconds] -format "%Y_%m%d_%H%M%S"]
     if [isFileSource] {
         set fileName "${dateTime}.txt"
     } else {
@@ -962,7 +974,7 @@ proc getAutoSaveFileName {} {
 proc openSource {} {
     global Fd LoadFile eFilter iFilter Device LineCount \
     statusTwo status3rd AppName ADB_PATH LogType ReadingLabel ProcessFilterExpression TagFilter ProcessTagFilter ProcessAndOrTag \
-    LoadFileMode AutoSaveDeviceLog AutoSaveFileName IgnoreCaseFilter UseGnuAwk LoadFiles RemoteLogClearOnLoad NativeTagFilter clearOnTruncate  stderroutFD stderrinFD TrackTail
+    LoadFileMode AutoSaveDeviceLog AutoSaveFileName IgnoreCaseFilter LoadFiles RemoteLogClearOnLoad NativeTagFilter clearOnTruncate  stderroutFD stderrinFD TrackTail
 
     closeLoadingFd
     set deny "!"
@@ -981,7 +993,9 @@ proc openSource {} {
     puts "pAndOr: \"$ProcessAndOrTag\""
     puts "processTagFilter: \"$ProcessTagFilter\""
 
-    set beginCondition [expr $UseGnuAwk && $IgnoreCaseFilter ? "{BEGIN{IGNORECASE = 1}}" : "{BEGIN{}}"]
+    # GNU Awk 5.0+ is a hard requirement, so IGNORECASE is always available.
+    # Braced expr: the operands must not be re-parsed as expressions.
+    set beginCondition [expr {$IgnoreCaseFilter ? {BEGIN{IGNORECASE=1}} : {BEGIN{}}}]
     puts "beginCondition: $beginCondition"
 	set procOpenCmd ""
     if {$isFileSource} {
@@ -992,9 +1006,13 @@ proc openSource {} {
         if {$LoadFileMode} { #load file mode means incremental loading
             set clearWatchAdd ""
             if {$clearOnTruncate} {
-                lassign [chan pipe] stderroutFD stderrinFD
-                set clearWatchAdd " 2>@$stderrinFD"
-                fileevent $stderroutFD r "checkStderrForTruncate $stderroutFD"
+                if {[catch {chan pipe} pipeFds]} {
+                    puts "clearOnTruncate disabled, chan pipe unavailable (needs Tcl 8.6): $pipeFds"
+                } else {
+                    lassign $pipeFds stderroutFD stderrinFD
+                    set clearWatchAdd " 2>@$stderrinFD"
+                    fileevent $stderroutFD r "checkStderrForTruncate $stderroutFD"
+                }
             }
             set procOpenCmd "| tail -f -n +1 \"$LoadFile\" $clearWatchAdd | awk \"$beginCondition NR > 0 && $ProcessTagFilter && $deny /$xeFilter/ && /$xiFilter/ {print}{fflush()}\" "
 
@@ -1026,8 +1044,25 @@ proc openSource {} {
             set procOpenCmd "|$ADB_PATH -s $device logcat -v threadtime $NativeTagFilter | awk \"$beginCondition NR > 0 && $ProcessTagFilter && $deny /$xeFilter/ && /$xiFilter/ {print}{fflush()}\" "
         }
     }
-    set Fd [open $procOpenCmd r]
-	puts "FD Opened with: $procOpenCmd"
+    # on success catch leaves the channel handle in openResult, not an error
+    if {[catch {open $procOpenCmd r} openResult]} {
+        set Fd ""
+        closeStderrPipe
+        puts "failed to open source: $openResult"
+        puts "  cmd was: $procOpenCmd"
+        $statusTwo config -text "Error" -fg red
+        tk_messageBox -title "Cannot start the log reader" -type ok -icon error \
+            -message "Failed to start the log pipeline:\n\n$openResult\n\nLogCatch needs GNU Awk 5.0+ (and tail) on PATH.\nOn Windows, run src/setup_path_for_windows.bat to locate them."
+        return
+    }
+    set Fd $openResult
+    # The child owns the write end of the stderr pipe now; drop our copy so the
+    # read end actually sees EOF when the pipeline exits.
+    if {$stderrinFD != ""} {
+        catch {close $stderrinFD}
+        set stderrinFD ""
+    }
+    puts "FD Opened with: $procOpenCmd"
     puts "src: $Device fd: $Fd"
     puts "eFilter: $xeFilter"
     puts "ifilter: $xiFilter"
@@ -1035,23 +1070,24 @@ proc openSource {} {
     $status3rd config -text "Source: $Device"
     .b.logtype config -text "LogType: $LogType"
     wm title . "$title : $AppName"
-    if {$Fd != ""} {
-        set LineCount 0
-        logcat 1 $Fd
-    } else {
-        puts "$Fd null"
-    }
+    set LineCount 0
+    logcat 1 $Fd
 }
 
 proc closeLoadingFd {} {
     global Fd
     if {$Fd != ""} {
         fileevent $Fd r ""
+        killPids [pid $Fd]
         fconfigure $Fd -blocking 0
-        close $Fd
+        catch {close $Fd}
         puts "closeLoadingFd $Fd"
         set Fd ""
     }
+    # The stderr pipe belongs to this pipeline. openSource recreates it on every
+    # reload (i.e. on every filter change), so it must be torn down here or we
+    # leak two channels per reload.
+    closeStderrPipe
     updateProcessFilterStatus disabled
 }
 
@@ -1067,7 +1103,7 @@ proc searchWordAll {w dir wentry} {
         set sCnt 0
         set len [string length $word]
         set index 0.0
-        set idx0 [$w search -forward -- $word $index]
+        set idx0 [$w search -forward -nocase -- $word $index]
         set index $idx0
         while {$index != ""} {
             set s [lindex [split $index "."] 0]
@@ -1075,7 +1111,7 @@ proc searchWordAll {w dir wentry} {
             incr sCnt
             incr e $len
             $w tag add colorYel $index $s.$e
-            set index [$w search -forward -- $word $s.$e]
+            set index [$w search -forward -nocase -- $word $s.$e]
             if {$index == $idx0} { break }
         }
         if {$sCnt} {
@@ -1099,7 +1135,7 @@ proc searchWord {w dir wentry} {
     set ps [lindex [split $pIndex "."] 0]
     set pe [lindex [split $pIndex "."] 1]
     set sIndex $ps.[expr $pe + $delta]
-    set index [$w search $dir -- $word $sIndex]
+    set index [$w search $dir -nocase -- $word $sIndex]
     set s [lindex [split $index "."] 0]
     set e [lindex [split $index "."] 1]
     puts "index: $index pIndex: $pIndex  dir: $dir  len: $len"
@@ -1168,7 +1204,7 @@ proc highlightWord {colorTag {word ""}} {
     set cnt $sCnt
     while 1 {
         # puts "\"$word $index\""
-        set index [$logview search -count wordLen -- "$word" $index end]
+        set index [$logview search -nocase -count wordLen -- "$word" $index end]
         if {$index == ""} {
             break
         }
@@ -1557,20 +1593,37 @@ proc saveLines {{which "all"}} {
 
 proc getModelOS {device} {
     global CONST_MODEL CONST_VERSION ADB_PATH
-	try {
-
-		set model [exec $ADB_PATH -s $device shell getprop $CONST_MODEL]
-		set m ""
-		foreach word $model {
-			append m $word
-		}
-		set model $m
-		set osversion [lindex [exec $ADB_PATH -s $device shell getprop $CONST_VERSION] 0]
-		puts "\"$osversion\":$device\""
-		return ${model}/${osversion}
-	} on error {errMsg opts} {
-		return $"error getting model, maybe offline: $errMsg"
-	}
+    # -ignorestderr: adb writes chatter such as "* daemon not running; starting
+    # now at tcp:5037" to stderr, and plain exec turns *any* stderr output into
+    # an error - so a perfectly good getprop was being reported as offline.
+    #
+    # One round trip instead of two: getDevices calls this for every attached
+    # device, and each `adb shell` costs a few hundred ms of frozen UI.
+    #
+    # NOTE: a `return` inside the catch body is swallowed by catch (it yields
+    # TCL_RETURN == 2, which is truthy), so the value has to be returned below.
+    if {[catch {
+        exec -ignorestderr $ADB_PATH -s $device shell \
+            "getprop $CONST_MODEL; getprop $CONST_VERSION"
+    } out]} {
+        puts "getModelOS failed for $device (offline?): $out"
+        return "Unknown/Unknown"
+    }
+    # adb shell returns CRLF on Windows. Split on lines rather than parsing the
+    # output as a Tcl list: a model name containing a brace or quote would make
+    # list parsing throw.
+    set lines [split [string map [list \r ""] $out] \n]
+    # Spaces are stripped from the model because the caller packs this into
+    # "model/os:serial" and later splits it back apart on / and :
+    set model [string map [list " " "" "/" "_" ":" "_"] [string trim [lindex $lines 0]]]
+    set osversion [string map [list " " "" "/" "_" ":" "_"] [string trim [lindex $lines 1]]]
+    if {$model == ""} {
+        set model "Unknown"
+    }
+    if {$osversion == ""} {
+        set osversion "Unknown"
+    }
+    return ${model}/${osversion}
 }
 
 proc getDevices {} {
@@ -1891,12 +1944,7 @@ proc showHistoryList {w} {
     }
     menu $m -tearoff 0
     foreach afile [lrange $LoadedFiles 0 19] {
-        set bfile "$afile"
-        if {[llength $bfile] > 1} {
-            set bfile "{$bfile}"
-        }
-        set bfile "{$bfile}"
-        $m add command -label "$afile" -command "loadFile $bfile"
+        $m add command -label "$afile" -command [list loadFile $afile]
     }
     set x [expr [winfo rootx $w] + [winfo width $w]]
     set y [winfo rooty $w]

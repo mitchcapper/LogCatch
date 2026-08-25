@@ -177,9 +177,7 @@ pack [ttk::combobox $LogLevelView -textvariable LogLevel(selected) -state readon
 bind $LogLevelView <<ComboboxSelected>> "after 300 openSource"
 
 set wProcessFilter $hks.process
-if {$UseGnuAwk} {
-    pack [checkbutton $hks.toggle_case_insensitive -text "Ignore case for filters.   " -command "after 300 openSource" -variable IgnoreCaseFilter -relief ridge] -side left
-}
+pack [checkbutton $hks.toggle_case_insensitive -text "Ignore case for filters.   " -command "after 300 openSource" -variable IgnoreCaseFilter -relief ridge] -side left
 pack [label $hks.labelprocess -text "Process Filter: "] -side left
 pack [button $wProcessFilter -command "after 0 showProcessList $wProcessFilter"] -side left
 set wProcessAndOr $hks.or
