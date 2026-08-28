@@ -198,7 +198,6 @@ Some logs start with a preamble that isn't in the log's own format, which detect
 ```
 The very first line is detected as a 'python style' log purely because its second word is "Debug".  Set **Skip Leading Lines When Detecting LogType** in [Preferences](#preferences) (or `--detectSkipLines`) to the number of preamble lines and detection starts below them, correctly finding 'studio' here.  The skipped lines are still loaded and displayed as normal, and they don't count against the 20 line detection window.  Nudge the number up and watch the console until it reports the type you want.
 
-Note that changing the log type only affects lines read after the change; reload the file (click it in the Input Source list) to recolor what is already on screen.
 
 ## Colors
 By default every log level gets a different color and there are 9 different colors used for the search highlight boxes.   You can edit these colors by editing text_color_tags.list in the config directory, do not edit the first word on each line as that is the name we lookup the color by.   You can see all the possible color names tcl supports in the [TclColors.md](config/TclColors.md) file.

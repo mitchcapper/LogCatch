@@ -612,6 +612,49 @@ proc changeWrapMode {args} {
     update idletasks
     puts "changeWrapMode $WrapMode"
 }
+# Re-tag every line already in the view using the current LogType, so changing
+# the type recolors what is on screen instead of needing the source re-read.
+# Tag ops are allowed while the widget is -state disabled, so it stays disabled.
+proc recolorLogView {} {
+    global logview LogLevels LogLevelTags LastLogLevel LogType
+
+    if {[$logview compare "1.0" >= "end-1c"]} {
+        return
+    }
+    foreach tag $LogLevelTags {
+        $logview tag remove $tag 1.0 end
+    }
+    # replay from the top: getTag carries the previous line's level onto any
+    # line it cannot parse, so the result depends on the order lines are visited
+    set LastLogLevel "V"
+    set count 0
+    set i 1
+    while {[$logview compare "$i.0" < "end-1c"]} {
+        set loglevel [getLogLevel "[$logview get "$i.0" "$i.0 lineend"]"]
+        if {[lsearch $LogLevels "$loglevel"] == -1} {
+            set loglevel "G"
+        }
+        lappend ranges([getTag $loglevel]) "$i.0" "$i.0 lineend + 1c"
+        incr i
+        # flush in batches so a huge log does not build one giant range list
+        if {[incr count] % 5000 == 0} {
+            applyRecolorRanges ranges
+            update idletasks
+        }
+    }
+    applyRecolorRanges ranges
+    puts "recolored $count line(s) as logtype $LogType"
+}
+
+proc applyRecolorRanges {rangesVar} {
+    global logview
+    upvar 1 $rangesVar ranges
+    foreach tag [array names ranges] {
+        $logview tag add $tag {*}$ranges($tag)
+    }
+    array unset ranges
+}
+
 proc applyDetectSkipLines {args} {
     global DetectSkipLines LoadFile
     # snap whatever was typed back to the value detection will actually use
@@ -636,6 +679,7 @@ proc changeForcedLogType {args} {
     }
     updateLogLevelView
     reloadProc
+    recolorLogView
     .b.logtype config -text "LogType: $LogType"
     puts "changeForcedLogType for val: $ForcedLogType"
 }
