@@ -4,20 +4,48 @@ set LogLevels "G V D I W E A F"
 set LogLevelsLong "Generic Verbose Debug Info Warning Error Assert Fatal"
 set LogLevelsLongLower [string tolower $LogLevelsLong]
 set LogLevel(selected) "Generic"
+# leading lines to ignore when detecting the log type (IDE/debugger preamble etc)
+set DetectSkipLines 0
 
+
+# DetectSkipLines is user editable (Preferences), so never trust it blindly.
+# scan forces plain decimal: expr would read a typed "010" as octal 8.
+proc detectSkipLines {} {
+    global DetectSkipLines
+    if {![string is integer -strict "$DetectSkipLines"]
+        || [scan "$DetectSkipLines" "%d" n] != 1 || $n < 0} {
+        return 0
+    }
+    return $n
+}
+
+# "" and "detect" both mean "detect the type from the log itself"
+proc isForcedLogType {} {
+    global ForcedLogType
+    return [expr {"$ForcedLogType" != "" && "$ForcedLogType" != "detect"}]
+}
 
 # check first lineMax lines
 proc checkLogType {filename} {
-    global LogType LogLevels ForcedLogType LogLevelsLong LogLevelsLongLower
+    global LogType LogLevels ForcedLogType LogLevelsLong LogLevelsLongLower DetectSkipLines
     set LogType "none"
-    if {"$ForcedLogType" != ""} {
+    if {[isForcedLogType]} {
         set LogType $ForcedLogType
         return
     }
-    puts "checking logtype ... \"$filename\""
+    set skip [detectSkipLines]
+    set skipNote ""
+    if {$skip > 0} {
+        set skipNote " (skipping the first $skip line(s))"
+    }
+    puts "checking logtype ... \"$filename\"$skipNote"
+    # every match below breaks out of the loop, so on a hit these still hold the
+    # deciding line
+    set rawLine ""
+    set lineNo 0      ;# physical line number of $rawLine
+    set lcnt 0        ;# non-empty lines examined
     set rp [open "$filename" r]
     if {"$rp" != ""} {
-        set lcnt 0        ;# line
         set ncnt 0        ;# none
         set bcnt 0        ;# brief
         set tagcnt 0      ;# tag
@@ -31,7 +59,10 @@ proc checkLogType {filename} {
         set minimax 2
         set linemax 20
         while {[gets $rp line] >= 0 && $lcnt <= $linemax} {
+            incr lineNo
+            if {$lineNo <= $skip} { continue }
             # puts $lcnt/{$line}
+            set rawLine $line
             set line [string map {\" \\" \{ \\{ \} \\}} "$line"]
             if {"$line" != ""} {
                 set second [string index $line 1]
@@ -139,7 +170,11 @@ proc checkLogType {filename} {
         }
         close $rp
     }
-    puts "logtype maybe $LogType"
+    if {"$LogType" == "none"} {
+        puts "logtype maybe $LogType (no match in $lcnt non-empty lines after the skip of $skip)"
+    } else {
+        puts "logtype maybe $LogType (matched on line $lineNo: \"$rawLine\")"
+    }
 }
 
 proc reloadProc {} {
@@ -165,6 +200,14 @@ proc reloadProc {} {
         source $readingDir/readLog_3rdWord.tcl        
     } elseif {"$LogType" == "keyword"} {
         source $readingDir/readLog_keyword.tcl
+    } elseif {"$LogType" == "process"} {
+        source $readingDir/readLog_process.tcl
+    } elseif {"$LogType" == "tag"} {
+        source $readingDir/readLog_tag.tcl
+    } else {
+        # no reader for this type (e.g. thread): fall back rather than leaving
+        # whatever getLogLevel the previous log type installed
+        source $readingDir/readLog_none.tcl
     }
     puts "reload proc readLog for logtype: $LogType"
 }

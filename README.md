@@ -6,7 +6,7 @@ Designed to allow easy filtering and/or highlighting or multiple patterns at onc
 This is written in tcl/tk.
 
 Features:
-- Context colored log lines. Logtype detection enhances filtering including: time, threadtime, brief, process, eclipse, keyword based, python logs (and other log formats that have severity as the 2nd or 3rd 'word' in the log line), and studio logs
+- Context colored log lines. Logtype detection enhances filtering including: time, threadtime, brief, tag, process, long, eclipse, keyword based, python logs (and other log formats that have severity as the 2nd or 3rd 'word' in the log line), and studio logs.  The type can also be forced, and leading lines can be skipped when a log starts with a preamble in a different format
 - Filtering by keywords. This is done by awk regular expression like awk '/key|word/ {print}'
 - Key word/Term Searching/navigating and highlighting (up to 9 highlight/searches at once)
 - Saving all or part of log files after filtering
@@ -42,8 +42,10 @@ Android Specific Features:
 	- [Filtering](#filtering)
 		- [Android Native Tag/Level filtering](#android-native-taglevel-filtering)
 	- [Saving search terms/filtering](#saving-search-termsfiltering)
+	- [Preferences](#preferences)
 	- [Command Line Args](#command-line-args)
 - [Log Types](#log-types)
+	- [Forcing a type / fixing a bad detection](#forcing-a-type--fixing-a-bad-detection)
 - [Colors](#colors)
 - [Author](#author)
 
@@ -143,12 +145,29 @@ You can filter by a specific process and (or) by a specific android tag (tags ar
 ### Saving search terms/filtering
 The existing session has all search/filters saved automatically to `~/.logcatch` these are reloaded on startup as well.
 
+### Preferences
+Found under the "LogCatch" menu in the menubar, or under the "Menus" button if you run with the menu button face.
+
+Saved between sessions:
+- **ADB_PATH** - where adb lives, used for live device logging
+- **Menu Face** - show the classic menubar, a menu button, or both
+- **External Editor Path** - the editor launched by the "Editor" button
+- **Clear ADB Log on Device Connect** - runs `logcat --clear` each time you attach to a device
+- **Skip Leading Lines When Detecting LogType** - see [Log Types](#log-types) below
+
+Not saved between sessions (they reset to off each launch, use the matching command line arg to have them on every time):
+- **Clear Log View When Input File is Truncated** - same as `--clearOnTruncate`, you must reload the current file for a change to take effect
+- **Clear Log When Line Contains** - same as `--clearOn`
+
+There is also a "Show Debug Console" button, which opens the same console that `--console` shows at startup. The console is where log type detection, the awk command line, and most other diagnostics are printed, so it is the first place to look when something behaves unexpectedly.
+
 ### Command Line Args
 These are case sensitive, for Windows they can be specified after the logcatch.bat.
 
 - --dir [dir] - Overrides the directory for LogCatch and its other scripts
 - --clearOn [str] - If string is found in the log file everything before that string is cleared out.  Useful to essentially "start" logging when a specific event/action happens.
 - --logType [LogType] - force the log type to this type (rather than detecting it)
+- --detectSkipLines [N] - ignore the first N lines of a file when detecting the log type, for logs that start with a preamble that isn't in the log format.  Takes priority over the saved preference at startup, and (like the in-app setting) is then saved for next time
 - --file [file] - Start reading [file] as the log file
 - --console - Shows the debug console window by default
 - --clearOnTruncate - Clear the buffer if the file is truncated/overwritten
@@ -159,7 +178,27 @@ For android adb connections only:
 - --device [deviceRegex] - Takes a regex and if an android device with that name is found it is automatically attached to it
 
 ## Log Types
-LogCatch determines the type of log from the first lineMax(100 by default) lines of the log file.  The log type is currently only used for extracting the LogLevel for the line all other functionality works no matter the file type.  The loglevel allows for initial colorization of the line and filtering based on level.  When logcat is used it specifically is set by us to output in threadtime format and we switch to using that.  You can right click on the log type (bottom right) to force a specific type.  The 'keyword' type highlights based on keywords in the line (fatal,error,warning, etc).
+LogCatch determines the type of log by examining up to the first 20 non-empty lines of the log file.  The log type is currently only used for extracting the LogLevel for the line all other functionality works no matter the file type.  The loglevel allows for initial colorization of the line and filtering based on level.  When logcat is used it specifically is set by us to output in threadtime format and we switch to using that.  The 'keyword' type highlights based on keywords in the line (fatal,error,warning, etc).
+
+Detection is reported on the debug console (see `--console`), including which line decided it:
+```
+checking logtype ... "app.log"
+logtype maybe threadtime (matched on line 4: "08-27 10:15:01.456  1234  1250 D WindowManager: relayout")
+```
+
+### Forcing a type / fixing a bad detection
+Click the log type indicator at the bottom right to pick a type.  "Detect" (the default) goes back to detecting it from the file, and re-runs detection on the currently loaded file right away.  `--logType` does the same from the command line.
+
+Some logs start with a preamble that isn't in the log's own format, which detection will latch onto.  A Visual Studio / MonoVsDbg android session for instance starts with lines like:
+```
+23:39:47:181	Debug Address: 127.0.0.1
+23:39:47:181	Debug Port: 8864
+...
+23:39:48:851	08-27 23:39:54.672 D/AssetManager(26534): reusing systemIdmapPaths
+```
+The very first line is detected as a 'python style' log purely because its second word is "Debug".  Set **Skip Leading Lines When Detecting LogType** in [Preferences](#preferences) (or `--detectSkipLines`) to the number of preamble lines and detection starts below them, correctly finding 'studio' here.  The skipped lines are still loaded and displayed as normal, and they don't count against the 20 line detection window.  Nudge the number up and watch the console until it reports the type you want.
+
+Note that changing the log type only affects lines read after the change; reload the file (click it in the Input Source list) to recolor what is already on screen.
 
 ## Colors
 By default every log level gets a different color and there are 9 different colors used for the search highlight boxes.   You can edit these colors by editing text_color_tags.list in the config directory, do not edit the first word on each line as that is the name we lookup the color by.   You can see all the possible color names tcl supports in the [TclColors.md](config/TclColors.md) file.

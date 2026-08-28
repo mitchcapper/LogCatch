@@ -77,7 +77,7 @@ proc menuLogcatch {w} {
 }
 
 proc showPreferences {} {
-    global ADB_PATH MenuFace RemoteLogClearOnLoad clearOnTruncate autoClearLogOn showConsole
+    global ADB_PATH MenuFace RemoteLogClearOnLoad clearOnTruncate autoClearLogOn showConsole DetectSkipLines
     set w .preferences
     if {[winfo exists $w]} {
         raise $w
@@ -105,6 +105,14 @@ proc showPreferences {} {
     pack [button $w.f3.editorpath -text "Browse" -command "changeEditor $w"] -side right
     pack [frame $w.f4] -fill x
     pack [checkbutton $w.f4.remoteclearbox -text "Clear ADB Log on Device Connect" -variable RemoteLogClearOnLoad -relief ridge] -side right
+
+    pack [frame $w.fskip] -fill x
+    pack [label $w.fskip.label -text "Skip Leading Lines When Detecting LogType: "] -side left
+    pack [spinbox $w.fskip.entry -textvariable DetectSkipLines -from 0 -to 100000 -increment 1 -width 8 \
+        -command applyDetectSkipLines] -side left
+    pack [label $w.fskip.hint -text "(ignore an IDE/debugger preamble)" -fg gray40] -side left -padx 4
+    bind $w.fskip.entry <Return> applyDetectSkipLines
+    bind $w.fskip.entry <FocusOut> applyDetectSkipLines
 
     # Note about non-persistent preferences
     pack [frame $w.note] -fill x
@@ -355,7 +363,9 @@ proc logTypeMenu {} {
     set m .logtype
     menu $m -tearoff 0
 
-    $m add radiobutton -label Detect -value "" -variable ForcedLogType -command changeForcedLogType
+    # A menu radiobutton with an empty -value stores its -label instead, so the
+    # "detect" sentinel is what means "no forced type" (see changeForcedLogType).
+    $m add radiobutton -label Detect -value "detect" -variable ForcedLogType -command changeForcedLogType
     foreach type $LogTypes {
         set niceName [string toupper [string index $type 0]][string range $type 1 end]
         $m add radiobutton -label $niceName -value $type -variable ForcedLogType -command changeForcedLogType

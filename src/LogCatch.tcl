@@ -9,8 +9,9 @@ set autoClearLogOn ""
 set autoLoadFile ""
 set clearOnTruncate 0
 set showConsole 0
-set ForcedLogType ""
+set ForcedLogType "detect"
 set ForcedTrackTail 0
+set ForcedDetectSkipLines ""
 
 for { set i 0 } { $i < [llength $argv] } { incr i } {
     set opt [lindex $argv $i]
@@ -38,6 +39,7 @@ foreach {opt val} $argv {
         --clearOn { set autoClearLogOn $val }
         --file    { set autoLoadFile [regsub -all {\\} $val {/}] }
         --logType { set ForcedLogType $val }
+        --detectSkipLines { set ForcedDetectSkipLines $val }
         default   { puts stderr "LogCatch: ignoring unknown option \"$opt\"" }
     }
 }
@@ -610,12 +612,27 @@ proc changeWrapMode {args} {
     update idletasks
     puts "changeWrapMode $WrapMode"
 }
+proc applyDetectSkipLines {args} {
+    global DetectSkipLines LoadFile
+    # snap whatever was typed back to the value detection will actually use
+    set DetectSkipLines [detectSkipLines]
+    saveLastState
+    # only worth re-running when we are actually detecting
+    if {![isForcedLogType] && $LoadFile != ""} {
+        changeForcedLogType
+    }
+}
+
 proc changeForcedLogType {args} {
     global ForcedLogType LogType LoadFile
 
-    set LogType $ForcedLogType
-    if {$LogType == "" && $LoadFile != ""} {
-        checkLogType $LoadFile
+    if {[isForcedLogType]} {
+        set LogType $ForcedLogType
+    } else {
+        set LogType "none"
+        if {$LoadFile != ""} {
+            checkLogType $LoadFile
+        }
     }
     updateLogLevelView
     reloadProc
@@ -733,7 +750,7 @@ proc safeQuit {} {
 proc saveLastState {} {
     global env LoadedFiles iFilter eFilter WrapMode sWord Editor Encoding SDK_PATH ADB_PATH NO_ADB MenuFace \
 TagFilter hWord LogViewFontName LogViewFontSize FilterDeadProcess IgnoreCaseFilter RemoteLogClearOnLoad TrackTail NativeTagFilter ProcessAndOrTag
-    global LoadFileMode AutoSaveDeviceLog LogLevel
+    global LoadFileMode AutoSaveDeviceLog LogLevel DetectSkipLines
     set dir "$env(HOME)/.logcatch"
     set loadStateFile "last.state"
     if {! [file isdirectory $dir]} {
@@ -800,6 +817,8 @@ TagFilter hWord LogViewFontName LogViewFontSize FilterDeadProcess IgnoreCaseFilt
         puts $fdW $IgnoreCaseFilter
         puts $fdW ":LogLevel(selected)"
         puts $fdW $LogLevel(selected)
+        puts $fdW ":DetectSkipLines"
+        puts $fdW $DetectSkipLines
         puts $fdW ":"
         close $fdW
     }
@@ -808,7 +827,7 @@ TagFilter hWord LogViewFontName LogViewFontSize FilterDeadProcess IgnoreCaseFilt
 proc loadLastState {} {
     global LoadedFiles env WrapMode iFilter eFilter sWord Editor SDK_PATH ADB_PATH NO_ADB MenuFace TagFilter
     global hWord LogViewFontName LogViewFontSize FilterDeadProcess LogLevelTags TextColorTags IgnoreCaseFilter RemoteLogClearOnLoad TrackTail NativeTagFilter wProcessAndOr ProcessAndOrTagSet
-    global LoadFileMode AutoSaveDeviceLog LogLevel
+    global LoadFileMode AutoSaveDeviceLog LogLevel DetectSkipLines
     set dir "$env(HOME)/.logcatch"
     set loadLastState "last.state"
     if {! [file isdirectory $dir]} {
@@ -876,6 +895,8 @@ proc loadLastState {} {
                     set flag 25
                 } elseif {[string match ":LogLevel(selected)" $line]} {
                     set flag 26
+                } elseif {[string match ":DetectSkipLines" $line]} {
+                    set flag 31
                 } else {
                     set flag 0
                 }
@@ -925,6 +946,10 @@ proc loadLastState {} {
                 set IgnoreCaseFilter $line
             } elseif {$flag == 26} {
                 set LogLevel(selected) $line
+            } elseif {$flag == 31} {
+                if {[string is integer -strict $line] && $line >= 0} {
+                    set DetectSkipLines $line
+                }
             } else {
             }
         }
@@ -2273,6 +2298,15 @@ setupEntryKeyPressFilter
 #bind $fsrch.hword1 <Key-Up> "seekHighlight colorLbl up"
 if {$ForcedTrackTail} {
 	set TrackTail 1
+}
+# after loadLastState so the command line beats the saved preference
+if {"$ForcedDetectSkipLines" != ""} {
+    set DetectSkipLines $ForcedDetectSkipLines
+    set DetectSkipLines [detectSkipLines]
+    if {"$DetectSkipLines" ne "$ForcedDetectSkipLines"} {
+        puts stderr "LogCatch: --detectSkipLines \"$ForcedDetectSkipLines\" is not a plain\
+ non-negative integer, using $DetectSkipLines"
+    }
 }
 if {"$autoLoadFile" != ""} {
     loadFile $autoLoadFile
