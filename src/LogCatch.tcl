@@ -1453,6 +1453,30 @@ proc addFilter {kind which} {
 proc suspendRead {} {
 
 }
+# Called when the user clicks the TrackTail checkbutton (trackTail itself is also
+# run from the updateView timer, which must never pop a dialog).
+proc trackTailToggled {} {
+    global TrackTail LoadFileMode LoadFile
+
+    if {$TrackTail && !$LoadFileMode && [isFileSource]} {
+        set answer [tk_messageBox -title "TrackTail needs incremental loading" \
+        -message "TrackTail only works when the file is opened in incremental read mode, and loading is currently set to One Shot.\n\nSwitch to incremental loading and reload the file now?\n\nYou can change this at any time by right clicking on the 'Files..' button." \
+        -type yesno -icon question]
+        if {$answer == "yes"} {
+            set LoadFileMode 1
+            if {[winfo exists .top.sources.files]} {
+                .top.sources.files config -text "Files..>>"
+            }
+            if {$LoadFile != ""} {
+                loadFile [list $LoadFile]
+            }
+        } else {
+            set TrackTail 0
+        }
+    }
+    trackTail
+}
+
 proc trackTail {} {
     global logview TrackTail trackTailTask
     if {$TrackTail} {
